@@ -1,0 +1,21 @@
+# 构建产物
+/FpsSocdTool.exe
+/bin/
+/obj/
+*.pdb
+*.exe~
+
+# 运行日志与本地配置
+*.log
+/socd.log
+
+# Visual Studio / Rider 本地文件
+.vs/
+.idea/
+*.user
+*.suo
+*.cache
+
+# 系统杂项
+Thumbs.db
+desktop.ini
