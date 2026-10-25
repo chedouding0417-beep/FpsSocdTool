@@ -10,6 +10,10 @@
 
 ---
 
+## 下载
+
+从 [Releases](https://github.com/chedouding0417-beep/FpsSocdTool/releases) 下载最新的 `FpsSocdTool.exe`，放到任意目录直接运行即可（程序清单要求管理员权限，首次运行会弹 UAC）。也可以按下面的「实现说明」自行编译，不用信任任何预编译二进制。
+
 ## 快速开始
 
 1. 程序已经设置为**登录时自动启动**（计划任务 `FpsSocdToolAutoStart`，管理员权限，无需每次点 UAC，登录后约 30 秒启动）。也可以从开始菜单 `FpsSocdTool` → “FPS SOCD 急停助手”手动启动；手动启动会弹 UAC。
@@ -155,3 +159,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -SelfTest
 ## 免责声明
 
 本工具仅供学习 Windows 输入处理、单机练习或游戏规则允许的场景使用。使用者需自行确认目标游戏的用户协议与反作弊政策。因使用本工具导致的账号处罚、数据异常或其他损失，由使用者自行承担。
+
+---
+
+## 许可证
+
+[MIT License](LICENSE)：可以自由使用、修改、分发，保留版权声明即可。
