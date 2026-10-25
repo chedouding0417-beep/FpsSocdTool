@@ -11,6 +11,7 @@ namespace FpsSocdTool
         internal bool StartEnabled;
         internal int TapMs = 35;
         internal int CooldownMs = 70;
+        internal int ActivationDelayMs;
         internal bool SkipIfOppositeHeld = true;
         internal bool UseScanCodes = true;
         internal string OnlyInProcess = string.Empty;
@@ -93,6 +94,9 @@ namespace FpsSocdTool
                         break;
                     case "general.cooldownms":
                         config.CooldownMs = ParseInt(value, config.CooldownMs, 0, 2000, fullKey, localWarnings);
+                        break;
+                    case "general.activationdelayms":
+                        config.ActivationDelayMs = ParseInt(value, config.ActivationDelayMs, 0, 500, fullKey, localWarnings);
                         break;
                     case "general.skipifoppositeheld":
                         config.SkipIfOppositeHeld = ParseBool(value, config.SkipIfOppositeHeld, fullKey, localWarnings);
@@ -329,6 +333,87 @@ namespace FpsSocdTool
             WriteAllTextAtomic(path, string.Join(Environment.NewLine, lines.ToArray()) + Environment.NewLine);
         }
 
+        /// <summary>
+        /// Updates only the ActivationDelayMs line, preserving every other line,
+        /// comment and unknown key in the user's config file.
+        /// </summary>
+        internal static void SaveActivationDelayMs(string path, int delayMs)
+        {
+            List<string> lines = new List<string>();
+            if (File.Exists(path))
+            {
+                lines.AddRange(File.ReadAllLines(path, Encoding.UTF8));
+            }
+
+            int generalStart = -1;
+            int generalEnd = lines.Count;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string header = lines[i].Trim();
+                if (!(header.StartsWith("[", StringComparison.Ordinal) && header.EndsWith("]", StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                if (generalStart >= 0)
+                {
+                    generalEnd = i;
+                    break;
+                }
+
+                string sectionName = header.Substring(1, header.Length - 2).Trim();
+                if (sectionName.Equals("General", StringComparison.OrdinalIgnoreCase))
+                {
+                    generalStart = i;
+                }
+            }
+
+            if (generalStart < 0)
+            {
+                if (lines.Count > 0 && lines[lines.Count - 1].Trim().Length > 0)
+                {
+                    lines.Add(string.Empty);
+                }
+
+                lines.Add("[General]");
+                lines.Add("ActivationDelayMs=" + delayMs.ToString(CultureInfo.InvariantCulture));
+            }
+            else
+            {
+                bool updated = false;
+                for (int i = generalStart + 1; i < generalEnd; i++)
+                {
+                    string line = lines[i].Trim();
+                    if (line.Length == 0 || line.StartsWith(";", StringComparison.Ordinal) ||
+                        line.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    int equalsIndex = line.IndexOf('=');
+                    if (equalsIndex <= 0)
+                    {
+                        continue;
+                    }
+
+                    string key = line.Substring(0, equalsIndex).Trim();
+                    if (key.Equals("ActivationDelayMs", StringComparison.OrdinalIgnoreCase))
+                    {
+                        lines[i] = "ActivationDelayMs=" + delayMs.ToString(CultureInfo.InvariantCulture);
+                        updated = true;
+                        break;
+                    }
+                }
+
+                if (!updated)
+                {
+                    lines.Insert(generalStart + 1, "ActivationDelayMs=" + delayMs.ToString(CultureInfo.InvariantCulture));
+                }
+            }
+
+            WriteAllTextAtomic(path, string.Join(Environment.NewLine, lines.ToArray()) + Environment.NewLine);
+        }
+
         private static void WriteAllTextAtomic(string path, string content)
         {
             string directory = Path.GetDirectoryName(path);
@@ -472,6 +557,9 @@ namespace FpsSocdTool
             builder.AppendLine();
             builder.AppendLine("; 两次补键之间的最小间隔（0-2000 毫秒），防止连点抖动");
             builder.AppendLine("CooldownMs=" + CooldownMs.ToString(CultureInfo.InvariantCulture));
+            builder.AppendLine();
+            builder.AppendLine("; 松开方向键后，等待多久才发送反向补键（0-500 毫秒）");
+            builder.AppendLine("ActivationDelayMs=" + ActivationDelayMs.ToString(CultureInfo.InvariantCulture));
             builder.AppendLine();
             builder.AppendLine("; 另一方向键正被按住时，是否跳过补键");
             builder.AppendLine("SkipIfOppositeHeld=" + ToBoolText(SkipIfOppositeHeld));

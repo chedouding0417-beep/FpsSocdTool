@@ -13,7 +13,7 @@ namespace FpsSocdTool
 {
     internal sealed class TrayAppContext : ApplicationContext
     {
-        private const string Version = "1.7.1";
+        private const string Version = "1.8.0";
         private const int HotkeyToggleId = 1;
         private const int HotkeyPanicId = 2;
         private const int HotkeyFallbackToggleId = 3;
@@ -37,6 +37,7 @@ namespace FpsSocdTool
         private ToolStripMenuItem _panicItem;
         private ToolStripMenuItem _tapMsItem;
         private ToolStripMenuItem _cooldownItem;
+        private ToolStripMenuItem _activationDelayItem;
         private ToolStripMenuItem _openConfigItem;
         private ToolStripMenuItem _reloadItem;
         private ToolStripMenuItem _openLogItem;
@@ -94,6 +95,7 @@ namespace FpsSocdTool
             _engine.UseScanCodes = _config.UseScanCodes;
             _engine.TapMs = _config.TapMs;
             _engine.CooldownMs = _config.CooldownMs;
+            _engine.ActivationDelayMs = _config.ActivationDelayMs;
             _engine.SkipIfOppositeHeld = _config.SkipIfOppositeHeld;
             _engine.AllowTrigger = _processFilter.IsAllowed;
             _engine.TapAction += OnTapAction;
@@ -168,6 +170,8 @@ namespace FpsSocdTool
             _tapMsItem.DropDownOpening += OnTapMsMenuOpening;
             _cooldownItem = new ToolStripMenuItem("反向点按间隔");
             _cooldownItem.DropDownOpening += OnCooldownMenuOpening;
+            _activationDelayItem = new ToolStripMenuItem("反向点按生效延迟");
+            _activationDelayItem.DropDownOpening += OnActivationDelayMenuOpening;
             _openConfigItem = new ToolStripMenuItem("打开配置文件");
             _openConfigItem.Click += OnOpenConfigClicked;
             _reloadItem = new ToolStripMenuItem("重新加载配置");
@@ -185,6 +189,7 @@ namespace FpsSocdTool
             _menu.Items.Add(_panicItem);
             _menu.Items.Add(_tapMsItem);
             _menu.Items.Add(_cooldownItem);
+            _menu.Items.Add(_activationDelayItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_openConfigItem);
             _menu.Items.Add(_reloadItem);
@@ -819,6 +824,111 @@ namespace FpsSocdTool
             }
         }
 
+        private void OnActivationDelayMenuOpening(object sender, EventArgs e)
+        {
+            if (_activationDelayItem == null || _config == null)
+            {
+                return;
+            }
+
+            _activationDelayItem.DropDownItems.Clear();
+            int[] presets = new int[] { 0, 1, 2, 3, 5, 10, 15, 20, 30, 40, 50, 75, 100, 150, 200, 300, 500 };
+            bool foundCurrent = false;
+            for (int i = 0; i < presets.Length; i++)
+            {
+                int milliseconds = presets[i];
+                ToolStripMenuItem item = new ToolStripMenuItem(milliseconds + " ms");
+                item.Tag = milliseconds;
+                item.Checked = milliseconds == _config.ActivationDelayMs;
+                item.Click += OnActivationDelayClicked;
+                _activationDelayItem.DropDownItems.Add(item);
+                if (item.Checked)
+                {
+                    foundCurrent = true;
+                }
+            }
+
+            if (!foundCurrent)
+            {
+                ToolStripMenuItem custom = new ToolStripMenuItem("当前：" + _config.ActivationDelayMs +
+                    " ms（可在 config.ini 中修改）");
+                custom.Enabled = false;
+                _activationDelayItem.DropDownItems.Insert(0, custom);
+            }
+
+            _activationDelayItem.DropDownItems.Add(new ToolStripSeparator());
+            ToolStripMenuItem customItem = new ToolStripMenuItem("自定义（0-500 ms）...");
+            customItem.Click += OnActivationDelayCustomClicked;
+            _activationDelayItem.DropDownItems.Add(customItem);
+            ToolStripMenuItem hint = new ToolStripMenuItem("松开方向键后等待多久才补键；0 = 立即");
+            hint.Enabled = false;
+            _activationDelayItem.DropDownItems.Add(hint);
+        }
+
+        private void OnActivationDelayClicked(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null || item.Tag == null || _config == null)
+            {
+                return;
+            }
+
+            ApplyActivationDelayMs((int)item.Tag);
+        }
+
+        private void OnActivationDelayCustomClicked(object sender, EventArgs e)
+        {
+            if (_config == null)
+            {
+                return;
+            }
+
+            using (ActivationDelayDialog dialog = new ActivationDelayDialog(_config.ActivationDelayMs))
+            {
+                Form owner = _menu == null ? null : _menu.FindForm();
+                DialogResult result = owner == null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
+                if (result == DialogResult.OK)
+                {
+                    ApplyActivationDelayMs(dialog.SelectedValue);
+                }
+            }
+        }
+
+        private void ApplyActivationDelayMs(int milliseconds)
+        {
+            if (_config == null)
+            {
+                return;
+            }
+
+            milliseconds = Math.Max(0, Math.Min(500, milliseconds));
+            _config.ActivationDelayMs = milliseconds;
+            if (_engine != null)
+            {
+                _engine.ActivationDelayMs = milliseconds;
+            }
+
+            try
+            {
+                if (File.Exists(_configPath))
+                {
+                    AppConfig.SaveActivationDelayMs(_configPath, milliseconds);
+                }
+                else
+                {
+                    _config.Save(_configPath);
+                }
+
+                Log.Info("反向点按生效延迟已调整为 " + milliseconds + " ms");
+            }
+            catch (Exception exception)
+            {
+                Log.Error("保存配置失败", exception);
+                MessageBox.Show("保存配置失败：\n" + exception.Message, "FPS SOCD 急停助手",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         private void OnOpenConfigClicked(object sender, EventArgs e)
         {
             OpenWithNotepad(_configPath);
@@ -883,6 +993,7 @@ namespace FpsSocdTool
                 _engine.UseScanCodes = newConfig.UseScanCodes;
                 _engine.TapMs = newConfig.TapMs;
                 _engine.CooldownMs = newConfig.CooldownMs;
+                _engine.ActivationDelayMs = newConfig.ActivationDelayMs;
                 _engine.SkipIfOppositeHeld = newConfig.SkipIfOppositeHeld;
                 _processFilter.SetList(newConfig.OnlyInProcess);
 

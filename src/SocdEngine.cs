@@ -30,7 +30,13 @@ namespace FpsSocdTool
         private long _lastTapTimestamp;
         private int _tapMs = 35;
         private int _cooldownMs = 70;
+        private int _activationDelayMs;
         private bool _skipIfOppositeHeld = true;
+        private bool _activationPending;
+        private SocdKey _activationKey;
+        private string _activationTrigger;
+        private int _activationGeneration;
+        private Timer _activationTimer;
 
         internal SocdEngine(IKeyEmitter emitter)
             : this(emitter, SocdKey.A, SocdKey.D)
@@ -74,6 +80,23 @@ namespace FpsSocdTool
         {
             get { return _cooldownMs; }
             set { _cooldownMs = Clamp(value, 0, 2000); }
+        }
+
+        /// <summary>Delay between the physical release and the reverse tap.</summary>
+        internal int ActivationDelayMs
+        {
+            get { return _activationDelayMs; }
+            set
+            {
+                _activationDelayMs = Clamp(value, 0, 500);
+                lock (_gate)
+                {
+                    if (_activationPending)
+                    {
+                        CancelPendingActivationLocked();
+                    }
+                }
+            }
         }
 
         internal bool SkipIfOppositeHeld
@@ -126,6 +149,8 @@ namespace FpsSocdTool
                 _enabled = enabled;
                 if (!enabled)
                 {
+                    CancelPendingActivationLocked();
+
                     if (_tapActive)
                     {
                         _tapActive = false;
@@ -181,6 +206,7 @@ namespace FpsSocdTool
                     if (isDown)
                     {
                         _negativeHeld = true;
+                        CancelPendingActivationLocked();
                         CancelTapForPhysicalKeyLocked(_negativeKey);
                         return;
                     }
@@ -199,13 +225,14 @@ namespace FpsSocdTool
                         return;
                     }
 
-                    activity = TryStartTapLocked(_positiveKey, "松开 " + KeyName(_negativeKey));
+                    activity = StartOrScheduleTapLocked(_positiveKey, "松开 " + KeyName(_negativeKey));
                 }
                 else
                 {
                     if (isDown)
                     {
                         _positiveHeld = true;
+                        CancelPendingActivationLocked();
                         CancelTapForPhysicalKeyLocked(_positiveKey);
                         return;
                     }
@@ -224,8 +251,81 @@ namespace FpsSocdTool
                         return;
                     }
 
-                    activity = TryStartTapLocked(_negativeKey, "松开 " + KeyName(_positiveKey));
+                    activity = StartOrScheduleTapLocked(_negativeKey, "松开 " + KeyName(_positiveKey));
                 }
+            }
+
+            if (activity != null)
+            {
+                RaiseTapAction(activity);
+            }
+        }
+
+        private string StartOrScheduleTapLocked(SocdKey key, string trigger)
+        {
+            CancelPendingActivationLocked();
+            if (_activationDelayMs <= 0)
+            {
+                return TryStartTapLocked(key, trigger);
+            }
+
+            _activationPending = true;
+            _activationKey = key;
+            _activationTrigger = trigger;
+            int generation = ++_activationGeneration;
+            if (_activationTimer != null)
+            {
+                _activationTimer.Dispose();
+            }
+
+            _activationTimer = new Timer(OnActivationTimer, generation,
+                _activationDelayMs, Timeout.Infinite);
+            DebugTrace.Write("引擎：安排 " + _activationDelayMs + " ms 后反向补键 " +
+                KeyName(key) + "（" + trigger + "）");
+            return trigger + " → 等待 " + _activationDelayMs + " ms 后反向补键 " + KeyName(key);
+        }
+
+        private void CancelPendingActivationLocked()
+        {
+            if (!_activationPending)
+            {
+                return;
+            }
+
+            _activationPending = false;
+            _activationKey = default(SocdKey);
+            _activationTrigger = null;
+            _activationGeneration++;
+            if (_activationTimer != null)
+            {
+                _activationTimer.Dispose();
+                _activationTimer = null;
+            }
+        }
+
+        private void OnActivationTimer(object state)
+        {
+            int generation = (int)state;
+            string activity = null;
+            lock (_gate)
+            {
+                if (_disposed || !_activationPending || generation != _activationGeneration)
+                {
+                    return;
+                }
+
+                _activationPending = false;
+                SocdKey key = _activationKey;
+                string trigger = _activationTrigger;
+                _activationKey = default(SocdKey);
+                _activationTrigger = null;
+
+                if (!_enabled)
+                {
+                    return;
+                }
+
+                activity = TryStartTapLocked(key, trigger + "（延迟 " + _activationDelayMs + " ms）");
             }
 
             if (activity != null)
@@ -516,6 +616,7 @@ namespace FpsSocdTool
 
                 _disposed = true;
                 _enabled = false;
+                CancelPendingActivationLocked();
 
                 if (_tapActive)
                 {
@@ -531,6 +632,11 @@ namespace FpsSocdTool
             }
 
             _releaseTimer.Dispose();
+            if (_activationTimer != null)
+            {
+                _activationTimer.Dispose();
+                _activationTimer = null;
+            }
         }
     }
 }

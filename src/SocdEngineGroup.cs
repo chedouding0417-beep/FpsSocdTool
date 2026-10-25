@@ -51,6 +51,16 @@ namespace FpsSocdTool
             }
         }
 
+        internal int ActivationDelayMs
+        {
+            get { return _horizontal.ActivationDelayMs; }
+            set
+            {
+                _horizontal.ActivationDelayMs = value;
+                _vertical.ActivationDelayMs = value;
+            }
+        }
+
         internal bool SkipIfOppositeHeld
         {
             get { return _horizontal.SkipIfOppositeHeld; }
