@@ -165,3 +165,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -SelfTest
 ## 许可证
 
 [MIT License](LICENSE)：可以自由使用、修改、分发，保留版权声明即可。
+
+## 贡献者
+
+见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
