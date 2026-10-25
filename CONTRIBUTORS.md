@@ -8,7 +8,7 @@
 
 ## 协作
 
-- **DeepSeek Harness Agent**（AI 编程助手）— 仓库初始化与发布：`.gitignore` / `.gitattributes` 整理、MIT 许可证、README 的「下载 / 许可证 / 贡献者」章节、GitHub Release 打包与上传
+- **DeepSeek**（[deepseek.com](https://www.deepseek.com)）— AI 编程助手，通过 DeepSeek Harness Agent 完成：仓库初始化与发布、`.gitignore` / `.gitattributes` 整理、MIT 许可证、README 的「下载 / 许可证 / 贡献者」章节、GitHub Release 打包与上传
 
 ---
 

@@ -20,7 +20,7 @@
 2. 托盘会出现新的黑底红边双箭头图标。**灰色 = 已暂停，亮色 = 已开启**。
 3. 自启动**不会自动开启，也不会弹菜单**；按 `Ctrl+Shift+O` 开启/暂停，然后松开 A/D/W/S 试试效果；按 `F9` 可随时紧急停止。
 4. 右键托盘图标，可以：
-   - 调整反向点按时长；
+   - 调整反向点按时长和反向点按间隔；
    - 打开/重新加载配置文件；
    - 查看日志；
    - 退出程序。
@@ -41,11 +41,11 @@
 | 开启/暂停热键 | `Ctrl+Shift+O` | 全局生效；Raw Input 与系统热键双通道 |
 | 紧急停止热键 | `F9` | 强制暂停，并松开正在补按的键 |
 | 反向点按时长 | `35 ms` | 松开 A/D/W/S 后，对向键按下多久（支持 1-300） |
-| 最小间隔 | `70 ms` | 两次补键之间的冷却，避免连点抖动 |
+| 反向点按间隔 | `70 ms` | 两次补键之间的最小冷却；菜单可调 0-2000 ms，0 = 不限制 |
 | 识别/发送按键 | `A` / `D` + `W` / `S` | 横向和纵向两轴独立；`UseScanCodes` 同时控制识别和发送模式 |
 | 启动即开启 | `false` | 默认启动后为暂停状态 |
 
-反向点按时长支持 **1-300 ms**：控制菜单里有 1/2/3/4/5/10…300 的预设，也有“自定义（1-300 ms）”输入框；也可以直接编辑 `config.ini`。工具运行期间会把 Windows 定时器精度提高到 1 ms，1-5 ms 的短补键更接近设定值。托盘预设只修改 `TapMs` 这一行，不会覆盖其他手动修改。
+反向点按时长支持 **1-300 ms**，反向点按间隔支持 **0-2000 ms**。控制菜单里都有预设和“自定义”输入框；也可以直接编辑 `config.ini`。工具运行期间会把 Windows 定时器精度提高到 1 ms，1-5 ms 的短补键更接近设定值。托盘预设只修改对应的 `TapMs` 或 `CooldownMs` 行，不会覆盖其他手动修改。
 
 ---
 
@@ -68,7 +68,7 @@
 [General]
 StartEnabled=false      ; 启动工具后是否立即开启
 TapMs=35                ; 反向点按持续时间，1-300 ms
-CooldownMs=70           ; 两次补键的最小间隔，0-2000 ms
+CooldownMs=70           ; 两次补键的最小间隔，0-2000 ms（0=不限制）
 SkipIfOppositeHeld=true ; 对向键正被按住时跳过补键
 UseScanCodes=true       ; true=识别和发送都用扫描码，false=都用虚拟键
 OnlyInProcess=          ; 仅在这些进程为前台时生效，逗号分隔；留空=所有程序
@@ -168,4 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -SelfTest
 
 ## 贡献者
 
-见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
+- **Chezhou**（[@chedouding0417-beep](https://github.com/chedouding0417-beep)）— 作者
+- **DeepSeek**（[deepseek.com](https://www.deepseek.com)）— AI 协作：仓库初始化、许可证与发布
+
+详见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。

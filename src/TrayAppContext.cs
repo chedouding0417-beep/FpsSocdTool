@@ -13,7 +13,7 @@ namespace FpsSocdTool
 {
     internal sealed class TrayAppContext : ApplicationContext
     {
-        private const string Version = "1.7.0";
+        private const string Version = "1.7.1";
         private const int HotkeyToggleId = 1;
         private const int HotkeyPanicId = 2;
         private const int HotkeyFallbackToggleId = 3;
@@ -36,6 +36,7 @@ namespace FpsSocdTool
         private ToolStripMenuItem _toggleItem;
         private ToolStripMenuItem _panicItem;
         private ToolStripMenuItem _tapMsItem;
+        private ToolStripMenuItem _cooldownItem;
         private ToolStripMenuItem _openConfigItem;
         private ToolStripMenuItem _reloadItem;
         private ToolStripMenuItem _openLogItem;
@@ -165,6 +166,8 @@ namespace FpsSocdTool
             _panicItem.Click += OnPanicClicked;
             _tapMsItem = new ToolStripMenuItem("反向点按时长");
             _tapMsItem.DropDownOpening += OnTapMsMenuOpening;
+            _cooldownItem = new ToolStripMenuItem("反向点按间隔");
+            _cooldownItem.DropDownOpening += OnCooldownMenuOpening;
             _openConfigItem = new ToolStripMenuItem("打开配置文件");
             _openConfigItem.Click += OnOpenConfigClicked;
             _reloadItem = new ToolStripMenuItem("重新加载配置");
@@ -181,6 +184,7 @@ namespace FpsSocdTool
             _menu.Items.Add(_toggleItem);
             _menu.Items.Add(_panicItem);
             _menu.Items.Add(_tapMsItem);
+            _menu.Items.Add(_cooldownItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_openConfigItem);
             _menu.Items.Add(_reloadItem);
@@ -701,6 +705,111 @@ namespace FpsSocdTool
                 }
 
                 Log.Info("反向点按时长已调整为 " + milliseconds + " ms");
+            }
+            catch (Exception exception)
+            {
+                Log.Error("保存配置失败", exception);
+                MessageBox.Show("保存配置失败：\n" + exception.Message, "FPS SOCD 急停助手",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void OnCooldownMenuOpening(object sender, EventArgs e)
+        {
+            if (_cooldownItem == null || _config == null)
+            {
+                return;
+            }
+
+            _cooldownItem.DropDownItems.Clear();
+            int[] presets = new int[] { 0, 10, 20, 30, 40, 50, 70, 100, 150, 200, 300, 500, 1000, 2000 };
+            bool foundCurrent = false;
+            for (int i = 0; i < presets.Length; i++)
+            {
+                int milliseconds = presets[i];
+                ToolStripMenuItem item = new ToolStripMenuItem(milliseconds + " ms");
+                item.Tag = milliseconds;
+                item.Checked = milliseconds == _config.CooldownMs;
+                item.Click += OnCooldownClicked;
+                _cooldownItem.DropDownItems.Add(item);
+                if (item.Checked)
+                {
+                    foundCurrent = true;
+                }
+            }
+
+            if (!foundCurrent)
+            {
+                ToolStripMenuItem custom = new ToolStripMenuItem("当前：" + _config.CooldownMs +
+                    " ms（可在 config.ini 中修改）");
+                custom.Enabled = false;
+                _cooldownItem.DropDownItems.Insert(0, custom);
+            }
+
+            _cooldownItem.DropDownItems.Add(new ToolStripSeparator());
+            ToolStripMenuItem customItem = new ToolStripMenuItem("自定义（0-2000 ms）...");
+            customItem.Click += OnCooldownCustomClicked;
+            _cooldownItem.DropDownItems.Add(customItem);
+            ToolStripMenuItem hint = new ToolStripMenuItem("两次补键之间的最小间隔；0 = 不限制");
+            hint.Enabled = false;
+            _cooldownItem.DropDownItems.Add(hint);
+        }
+
+        private void OnCooldownClicked(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null || item.Tag == null || _config == null)
+            {
+                return;
+            }
+
+            ApplyCooldownMs((int)item.Tag);
+        }
+
+        private void OnCooldownCustomClicked(object sender, EventArgs e)
+        {
+            if (_config == null)
+            {
+                return;
+            }
+
+            using (CooldownDialog dialog = new CooldownDialog(_config.CooldownMs))
+            {
+                Form owner = _menu == null ? null : _menu.FindForm();
+                DialogResult result = owner == null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
+                if (result == DialogResult.OK)
+                {
+                    ApplyCooldownMs(dialog.SelectedValue);
+                }
+            }
+        }
+
+        private void ApplyCooldownMs(int milliseconds)
+        {
+            if (_config == null)
+            {
+                return;
+            }
+
+            milliseconds = Math.Max(0, Math.Min(2000, milliseconds));
+            _config.CooldownMs = milliseconds;
+            if (_engine != null)
+            {
+                _engine.CooldownMs = milliseconds;
+            }
+
+            try
+            {
+                if (File.Exists(_configPath))
+                {
+                    AppConfig.SaveCooldownMs(_configPath, milliseconds);
+                }
+                else
+                {
+                    _config.Save(_configPath);
+                }
+
+                Log.Info("反向点按间隔已调整为 " + milliseconds + " ms");
             }
             catch (Exception exception)
             {

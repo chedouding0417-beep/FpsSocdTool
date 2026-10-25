@@ -248,6 +248,87 @@ namespace FpsSocdTool
             WriteAllTextAtomic(path, string.Join(Environment.NewLine, lines.ToArray()) + Environment.NewLine);
         }
 
+        /// <summary>
+        /// Updates only the CooldownMs line, preserving every other line, comment
+        /// and unknown key in the user's config file.
+        /// </summary>
+        internal static void SaveCooldownMs(string path, int cooldownMs)
+        {
+            List<string> lines = new List<string>();
+            if (File.Exists(path))
+            {
+                lines.AddRange(File.ReadAllLines(path, Encoding.UTF8));
+            }
+
+            int generalStart = -1;
+            int generalEnd = lines.Count;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string header = lines[i].Trim();
+                if (!(header.StartsWith("[", StringComparison.Ordinal) && header.EndsWith("]", StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                if (generalStart >= 0)
+                {
+                    generalEnd = i;
+                    break;
+                }
+
+                string sectionName = header.Substring(1, header.Length - 2).Trim();
+                if (sectionName.Equals("General", StringComparison.OrdinalIgnoreCase))
+                {
+                    generalStart = i;
+                }
+            }
+
+            if (generalStart < 0)
+            {
+                if (lines.Count > 0 && lines[lines.Count - 1].Trim().Length > 0)
+                {
+                    lines.Add(string.Empty);
+                }
+
+                lines.Add("[General]");
+                lines.Add("CooldownMs=" + cooldownMs.ToString(CultureInfo.InvariantCulture));
+            }
+            else
+            {
+                bool updated = false;
+                for (int i = generalStart + 1; i < generalEnd; i++)
+                {
+                    string line = lines[i].Trim();
+                    if (line.Length == 0 || line.StartsWith(";", StringComparison.Ordinal) ||
+                        line.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    int equalsIndex = line.IndexOf('=');
+                    if (equalsIndex <= 0)
+                    {
+                        continue;
+                    }
+
+                    string key = line.Substring(0, equalsIndex).Trim();
+                    if (key.Equals("CooldownMs", StringComparison.OrdinalIgnoreCase))
+                    {
+                        lines[i] = "CooldownMs=" + cooldownMs.ToString(CultureInfo.InvariantCulture);
+                        updated = true;
+                        break;
+                    }
+                }
+
+                if (!updated)
+                {
+                    lines.Insert(generalStart + 1, "CooldownMs=" + cooldownMs.ToString(CultureInfo.InvariantCulture));
+                }
+            }
+
+            WriteAllTextAtomic(path, string.Join(Environment.NewLine, lines.ToArray()) + Environment.NewLine);
+        }
+
         private static void WriteAllTextAtomic(string path, string content)
         {
             string directory = Path.GetDirectoryName(path);
