@@ -16,7 +16,7 @@
 
 ## 快速开始
 
-1. 程序已经设置为**登录时自动启动**（启动文件夹快捷方式，登录后由 Explorer 启动，会弹一次 UAC，选“是”后以管理员权限运行）。也可以从开始菜单 `FpsSocdTool` → “FPS SOCD 急停助手”手动启动。
+1. 程序已经设置为**登录时自动启动**（HKCU Run 项 `FpsSocdTool` → `UacLauncher.exe`，登录后由 Explorer 启动，会弹一次 UAC，选“是”后以管理员权限运行）。也可以从开始菜单 `FpsSocdTool` → “FPS SOCD 急停助手”手动启动。
 2. 托盘会出现新的黑底红边双箭头图标。**灰色 = 已暂停，亮色 = 已开启**。
 3. 自启动**不会自动开启，也不会弹菜单**；按 `Ctrl+Shift+O` 开启/暂停，然后松开 A/D/W/S 试试效果；按 `F9` 可随时紧急停止。
 4. 右键托盘图标，可以：
@@ -24,7 +24,7 @@
    - 打开/重新加载配置文件；
    - 查看日志；
    - 退出程序。
-5. 程序文件位于 `C:\FpsSocdTool`；首次运行会在用户数据目录 `%LOCALAPPDATA%\FpsSocdTool` 生成 `config.ini` 和 `socd.log`（配置和日志不放在 C 盘根目录的程序文件夹里，避免写入权限问题）。登录自启是启动文件夹里的 `FPS SOCD 急停助手.lnk`，可在任务管理器“启动应用”里查看/禁用。
+5. 程序文件位于 `C:\FpsSocdTool`；首次运行会在用户数据目录 `%LOCALAPPDATA%\FpsSocdTool` 生成 `config.ini` 和 `socd.log`（配置和日志不放在 C 盘根目录的程序文件夹里，避免写入权限问题）。登录自启是 HKCU Run 项 `FpsSocdTool`（目标 `C:\FpsSocdTool\UacLauncher.exe`），可在任务管理器“启动应用”里查看/禁用。
 
 > **看不到托盘图标？** Windows 11 默认会把新程序的图标收进任务栏的隐藏图标区。可以点击任务栏上的 `^` / `>` 箭头（在时钟附近）展开后找到新的双箭头图标；设置 > 个性化 > 任务栏 > 其他系统托盘图标里也可以把它设为显示。
 >
@@ -111,7 +111,7 @@ A：每次补键都会用定时器自动松开；如果这一次 `SendInput` 失
 A：这是全局按键监听的副作用。打字前按 `Ctrl+Shift+O` 暂停，打完再开启。
 
 **Q：怎么卸载？**  
-A：右键托盘 →“退出”，或从开始菜单 `FpsSocdTool` → “FPS SOCD 控制菜单”打开菜单后选择“退出”，然后删除整个 `FpsSocdTool` 文件夹即可。程序本身不写注册表、不安装服务；登录自启是启动文件夹里的 `FPS SOCD 急停助手.lnk`，如果不再需要，可在任务管理器“启动应用”里禁用，或直接删除该快捷方式。
+A：右键托盘 →“退出”，或从开始菜单 `FpsSocdTool` → “FPS SOCD 控制菜单”打开菜单后选择“退出”，然后删除整个 `FpsSocdTool` 文件夹即可。程序本身不写注册表、不安装服务；登录自启是 HKCU Run 项 `FpsSocdTool`，如果不再需要，可在任务管理器“启动应用”里禁用，或删除该 Run 项。
 
 **Q：为什么 Windows/杀毒软件可能提示风险？**  
 A：程序是自行编译的、未签名的输入模拟工具，可能被 SmartScreen 或杀毒软件误判；它不联网，也不读取游戏内存。你可以用附带的源码和 `Build.bat` 自行重新编译，确认没有额外行为。
@@ -138,6 +138,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -SelfTest
 ```
 
 或双击 `Build.bat` 重新编译。自测不会发送真实按键。
+
+构建会生成三个文件：主程序 `FpsSocdTool.exe`、登录自启入口 `UacLauncher.exe`（用 `ShellExecuteEx` + `runas` 提权拉起主程序），以及实验性的提权服务原型 `LauncherService.exe`（尚未接入自启，仅保留在 `tools/` 供参考）。
 
 调试模式（只在 `socd.log` 记录将要发送的按键，不实际注入）：
 

@@ -13,7 +13,7 @@ namespace FpsSocdTool
 {
     internal sealed class TrayAppContext : ApplicationContext
     {
-        private const string Version = "1.8.0";
+        private const string Version = "1.8.1";
         private const int HotkeyToggleId = 1;
         private const int HotkeyPanicId = 2;
         private const int HotkeyFallbackToggleId = 3;
@@ -76,6 +76,11 @@ namespace FpsSocdTool
 
             List<string> warnings;
             _config = AppConfig.Load(_configPath, out warnings);
+            if (StartupOptions.ForceStartEnabled)
+            {
+                _config.StartEnabled = true;
+            }
+
             _configWarnings = warnings;
             for (int i = 0; i < warnings.Count; i++)
             {

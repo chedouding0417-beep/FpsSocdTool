@@ -5,6 +5,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sourceDirectory = Join-Path $root 'src'
+$toolsDirectory = Join-Path $root 'tools'
 $outputPath = Join-Path $root 'FpsSocdTool.exe'
 $iconPath = Join-Path $root 'app.ico'
 
@@ -47,6 +48,50 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "编译成功：$outputPath"
+
+# 启动器组件：
+#   UacLauncher.exe     —— 登录自启入口，用 ShellExecuteEx(runas) 提权拉起主程序
+#   LauncherService.exe —— 实验性的提权服务原型（尚未接入自启，仅作参考）
+$launcherDefinitions = @(
+    @{
+        Name       = 'UacLauncher.exe'
+        Source     = 'UacLauncher.cs'
+        Target     = 'winexe'
+        References = @('System.dll')
+    },
+    @{
+        Name       = 'LauncherService.exe'
+        Source     = 'LauncherService.cs'
+        Target     = 'exe'
+        References = @('System.dll', 'System.ServiceProcess.dll')
+    }
+)
+
+foreach ($launcher in $launcherDefinitions) {
+    $launcherSource = Join-Path $toolsDirectory $launcher.Source
+    if (-not (Test-Path -LiteralPath $launcherSource)) {
+        Write-Host "跳过启动器 $($launcher.Name)：找不到 $launcherSource"
+        continue
+    }
+
+    $launcherOutput = Join-Path $root $launcher.Name
+    $launcherReferences = $launcher.References | ForEach-Object { "/reference:$_" }
+    $launcherArguments = @(
+        '/nologo',
+        "/target:$($launcher.Target)",
+        '/codepage:65001',
+        '/optimize+',
+        '/platform:anycpu',
+        "/out:$launcherOutput"
+    ) + $launcherReferences + @($launcherSource)
+
+    & $csc @launcherArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "启动器编译失败：$($launcher.Name)，csc 退出码：$LASTEXITCODE"
+    }
+
+    Write-Host "编译成功：$launcherOutput"
+}
 
 if ($SelfTest) {
     $report = Join-Path $env:TEMP 'FpsSocdTool-selftest.txt'

@@ -36,6 +36,10 @@ namespace FpsSocdTool
                 {
                     debugInput = true;
                 }
+                else if (string.Equals(argument, "--start-enabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    StartupOptions.ForceStartEnabled = true;
+                }
                 else if (argument.StartsWith("--config=", StringComparison.OrdinalIgnoreCase))
                 {
                     configPath = argument.Substring("--config=".Length);

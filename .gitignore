@@ -1,5 +1,8 @@
 # 构建产物
 /FpsSocdTool.exe
+/UacLauncher.exe
+/LauncherService.exe
+/Launcher.exe
 /bin/
 /obj/
 *.pdb
@@ -8,6 +11,7 @@
 # 运行日志与本地配置
 *.log
 /socd.log
+/uac-launcher.log
 
 # Visual Studio / Rider 本地文件
 .vs/
